@@ -1502,6 +1502,15 @@ class TestUnaryUfuncs(TestCase):
             check_equal(t, torch.special.i1e, scipy.special.i1e)
 
     @dtypes(torch.float32, torch.float64)
+    @dtypesIfMPS(torch.float32)
+    def test_special_ndtr_tail_accuracy(self, device, dtype):
+        # gh-187806: (1 + erf(x / sqrt(2))) / 2 flushes to 0 below x ~ -6 in fp32
+        x = torch.arange(-12.0, 12.0, 2**-6, dtype=dtype, device=device)
+        expected = 0.5 * torch.erfc(-x.cpu().double() * math.sqrt(0.5))
+        actual = torch.special.ndtr(x).cpu().double()
+        self.assertEqual(actual, expected, rtol=5e-5, atol=0)
+
+    @dtypes(torch.float32, torch.float64)
     @unittest.skipIf(not TEST_SCIPY, "SciPy not found")
     def test_special_ndtr_vs_scipy(self, device, dtype):
         def check_equal(t):
